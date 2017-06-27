@@ -1,8 +1,8 @@
-import io
-from flask import Flask, request, redirect, url_for, flash, send_file
+import PIL.ExifTags
+import PIL.Image
+from flask import Flask, request, redirect, flash, jsonify
 
-UPLOAD_FOLDER = './uploads'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'tiff'}
 
 app = Flask(__name__)
 
@@ -26,7 +26,8 @@ def upload_file():
             flash('No selected file')
             return redirect(request.url)
         if file and allowed_file(file.filename):
-            return send_file(io.BytesIO(file.read()), attachment_filename=file.filename)
+            return jsonify(extract_exif_data(file))
+
     return '''
       <!doctype html>
       <title>Upload new File</title>
@@ -36,6 +37,20 @@ def upload_file():
            <input type=submit value=Upload>
       </form>
       '''
+
+
+def extract_exif_data(file):
+    image = PIL.Image.open(file)
+    exif = image._getexif()
+
+    if exif is not None:
+        return {
+            PIL.ExifTags.TAGS[k]: v
+            for k, v in exif.items()
+            if k in PIL.ExifTags.TAGS and not isinstance(v, bytes)
+        }
+
+    return {"error": "No exif data found"}
 
 
 if __name__ == "__main__":
