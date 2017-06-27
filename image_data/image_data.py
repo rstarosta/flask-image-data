@@ -1,10 +1,11 @@
 import PIL.ExifTags
 import PIL.Image
-from flask import Flask, request, redirect, flash, jsonify
+from flask import Flask, request, redirect, flash, jsonify, render_template
 
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'tiff'}
 
 app = Flask(__name__)
+app.secret_key = "super_secret_key"
 
 
 def allowed_file(filename):
@@ -26,31 +27,27 @@ def upload_file():
             flash('No selected file')
             return redirect(request.url)
         if file and allowed_file(file.filename):
-            return jsonify(extract_exif_data(file))
+            data = extract_exif_data(file)
+            if not data:
+                flash('No exif data found')
+                return redirect(request.url)
+            return jsonify(data)
 
-    return '''
-      <!doctype html>
-      <title>Upload new File</title>
-      <h1>Upload new File</h1>
-      <form method=post enctype=multipart/form-data>
-        <p><input type=file name=file>
-           <input type=submit value=Upload>
-      </form>
-      '''
+    return render_template('upload.html')
 
 
 def extract_exif_data(file):
     image = PIL.Image.open(file)
     exif = image._getexif()
 
-    if exif is not None:
-        return {
-            PIL.ExifTags.TAGS[k]: v
-            for k, v in exif.items()
-            if k in PIL.ExifTags.TAGS and not isinstance(v, bytes)
-        }
+    if not exif:
+        return None
 
-    return {"error": "No exif data found"}
+    return {
+        PIL.ExifTags.TAGS[k]: v
+        for k, v in exif.items()
+        if k in PIL.ExifTags.TAGS and not isinstance(v, bytes)
+    }
 
 
 if __name__ == "__main__":
