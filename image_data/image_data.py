@@ -20,18 +20,24 @@ def upload_file():
         if 'file' not in request.files:
             flash('No file part')
             return redirect(request.url)
+
         file = request.files['file']
         # if user does not select file, browser also
         # submit a empty part without filename
         if file.filename == '':
             flash('No selected file')
             return redirect(request.url)
+
         if file and allowed_file(file.filename):
             data = extract_exif_data(file)
             if not data:
                 flash('No exif data found')
                 return redirect(request.url)
+
             return jsonify(data)
+
+        flash('Incorrect image format')
+        return redirect(request.url)
 
     return render_template('upload.html')
 
